@@ -50,6 +50,6 @@ $zipPath = "C:\results.zip"
 if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
 Compress-Archive -Path "$resultsDir\*" -DestinationPath $zipPath -Force
 
-Write-Host "[+] DONE — Results ready at $zipPath"
+Write-Host "[+] DONE  Results ready at $zipPath"
 
 
