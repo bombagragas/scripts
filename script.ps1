@@ -82,26 +82,40 @@ $outputHTML  = "C:\hayabusa\sec_summary.html"
 
 # -----------------------------
 # -----------------------------
-# 4️⃣ COLLECT RESULTS
+# ✅ Collect and zip results
 # -----------------------------
-Write-Host "[+] Preparing result folder"
+Write-Host "[+] Preparing results folder"
 
-$results = "C:\results"
-Remove-Item $results -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path $results | Out-Null
+$resultsDir = "C:\results"
+# Remove old results if they exist
+Remove-Item -Path $resultsDir -Recurse -Force -ErrorAction SilentlyContinue
+# Create a fresh folder
+New-Item -ItemType Directory -Path $resultsDir | Out-Null
 
+# -----------------------------
+# Collect outputs from tools
+# -----------------------------
 Write-Host "[+] Collecting LOKI logs"
-Copy-Item "C:\loki\loki\*.log" $results -ErrorAction SilentlyContinue
+$lokiLogs = "C:\loki\loki\*.log"
+Copy-Item -Path $lokiLogs -Destination $resultsDir -ErrorAction SilentlyContinue
 
 Write-Host "[+] Collecting Hayabusa results"
-Copy-Item "C:\hayabusa\sec.csv" $results -ErrorAction SilentlyContinue
-Copy-Item "C:\hayabusa\sec_summary.html" $results -ErrorAction SilentlyContinue
+Copy-Item -Path "C:\hayabusa\sec.csv" -Destination $resultsDir -ErrorAction SilentlyContinue
+Copy-Item -Path "C:\hayabusa\sec_summary.html" -Destination $resultsDir -ErrorAction SilentlyContinue
 
 Write-Host "[+] Collecting Hoarder results"
-Copy-Item "C:\hoarder_temp\releases\*" "$results\hoarder" -Recurse -ErrorAction SilentlyContinue
+$hoarderSource = "C:\hoarder_temp\releases\*"
+$hoarderDest   = Join-Path $resultsDir "hoarder"
+New-Item -ItemType Directory -Path $hoarderDest -Force | Out-Null
+Copy-Item -Path $hoarderSource -Destination $hoarderDest -Recurse -ErrorAction SilentlyContinue
 
-Write-Host "[+] Creating ZIP archive"
-Compress-Archive -Path "$results\*" -DestinationPath "C:\dfir_results.zip" -Force
+# -----------------------------
+# Create final ZIP for SFTP
+# -----------------------------
+$zipPath = "C:\results.zip"
+if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
+Compress-Archive -Path "$resultsDir\*" -DestinationPath $zipPath -Force
 
-Write-Host "[+] DONE — Results ready at C:\dfir_results.zip"
+Write-Host "[+] DONE — Results ready at $zipPath"
+
 

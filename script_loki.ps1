@@ -26,19 +26,30 @@ Set-Location "C:\loki\loki"
 
 # -----------------------------
 # -----------------------------
-# 4️⃣ COLLECT RESULTS
+# ✅ Collect and zip results
 # -----------------------------
-Write-Host "[+] Preparing result folder"
+Write-Host "[+] Preparing results folder"
 
-$results = "C:\results"
-Remove-Item $results -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path $results | Out-Null
+$resultsDir = "C:\results"
+# Remove old results if they exist
+Remove-Item -Path $resultsDir -Recurse -Force -ErrorAction SilentlyContinue
+# Create a fresh folder
+New-Item -ItemType Directory -Path $resultsDir | Out-Null
 
+# -----------------------------
+# Collect outputs from tools
+# -----------------------------
 Write-Host "[+] Collecting LOKI logs"
-Copy-Item "C:\loki\loki\*.log" $results -ErrorAction SilentlyContinue
+$lokiLogs = "C:\loki\loki\*.log"
+Copy-Item -Path $lokiLogs -Destination $resultsDir -ErrorAction SilentlyContinue
 
-Write-Host "[+] Creating ZIP archive"
-Compress-Archive -Path "$results\*" -DestinationPath "C:\dfir_results.zip" -Force
+# -----------------------------
+# Create final ZIP for SFTP
+# -----------------------------
+$zipPath = "C:\results.zip"
+if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
+Compress-Archive -Path "$resultsDir\*" -DestinationPath $zipPath -Force
 
-Write-Host "[+] DONE — Results ready at C:\dfir_results.zip"
+Write-Host "[+] DONE — Results ready at $zipPath"
+
 
