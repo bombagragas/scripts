@@ -25,10 +25,20 @@ Set-Location "C:\loki\loki"
 
 
 # -----------------------------
-# 4️⃣ RETRIEVE RESULTS
 # -----------------------------
-Write-Host "[+] Retrieving results"
-# Example SCP (assume SSH is ready)
+# 4️⃣ COLLECT RESULTS
+# -----------------------------
+Write-Host "[+] Preparing result folder"
 
+$results = "C:\results"
+Remove-Item $results -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $results | Out-Null
 
-Write-Host "=== DFIR Automation Script Finished ==="
+Write-Host "[+] Collecting LOKI logs"
+Copy-Item "C:\loki\loki\*.log" $results -ErrorAction SilentlyContinue
+
+Write-Host "[+] Creating ZIP archive"
+Compress-Archive -Path "$results\*" -DestinationPath "C:\dfir_results.zip" -Force
+
+Write-Host "[+] DONE — Results ready at C:\dfir_results.zip"
+
