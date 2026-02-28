@@ -32,7 +32,7 @@ $outputjson   = "C:\hayabusa\sec.json"
 $outputHTML  = "C:\hayabusa\sec_summary.html"
 
 & $hayabusaExe `
-  csv-timeline `
+  json-timeline `
   --no-wizard `
   -d $logsPath `
   --sort `
