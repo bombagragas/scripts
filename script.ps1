@@ -64,17 +64,17 @@ Write-Host "[+] Running Hayabusa"
 $hayabusaExe = "C:\hayabusa\hayabusa-3.8.0-win-x86.exe"
 $logsPath    = "C:\Windows\System32\winevt\Logs"
 $rulesPath   = "C:\hayabusa\rules"
-$outputCSV   = "C:\hayabusa\sec.csv"
+$outputjson   = "C:\hayabusa\sec.json"
 $outputHTML  = "C:\hayabusa\sec_summary.html"
 
 & $hayabusaExe `
-  csv-timeline `
+  json-timeline `
   --no-wizard `
   -d $logsPath `
   --sort `
   --profile timesketch-minimal `
   --rules $rulesPath `
-  --output $outputCSV `
+  --output $outputjson `
   -T `
   --HTML-report $outputHTML
 
@@ -100,7 +100,7 @@ $lokiLogs = "C:\loki\loki\*.log"
 Copy-Item -Path $lokiLogs -Destination $resultsDir -ErrorAction SilentlyContinue
 
 Write-Host "[+] Collecting Hayabusa results"
-Copy-Item -Path "C:\hayabusa\sec.csv" -Destination $resultsDir -ErrorAction SilentlyContinue
+Copy-Item -Path "C:\hayabusa\sec.json" -Destination $resultsDir -ErrorAction SilentlyContinue
 Copy-Item -Path "C:\hayabusa\sec_summary.html" -Destination $resultsDir -ErrorAction SilentlyContinue
 
 Write-Host "[+] Collecting Hoarder results"

@@ -28,7 +28,7 @@ Write-Host "[+] Running Hayabusa"
 $hayabusaExe = "C:\hayabusa\hayabusa-3.8.0-win-x86.exe"
 $logsPath    = "C:\Windows\System32\winevt\Logs"
 $rulesPath   = "C:\hayabusa\rules"
-$outputCSV   = "C:\hayabusa\sec.csv"
+$outputjson   = "C:\hayabusa\sec.json"
 $outputHTML  = "C:\hayabusa\sec_summary.html"
 
 & $hayabusaExe `
@@ -38,7 +38,7 @@ $outputHTML  = "C:\hayabusa\sec_summary.html"
   --sort `
   --profile timesketch-minimal `
   --rules $rulesPath `
-  --output $outputCSV `
+  --output $outputjson `
   -T `
   --HTML-report $outputHTML
 
@@ -60,7 +60,7 @@ New-Item -ItemType Directory -Path $resultsDir | Out-Null
 # Collect outputs from tools
 
 Write-Host "[+] Collecting Hayabusa results"
-Copy-Item -Path "C:\hayabusa\sec.csv" -Destination $resultsDir -ErrorAction SilentlyContinue
+Copy-Item -Path "C:\hayabusa\sec.json" -Destination $resultsDir -ErrorAction SilentlyContinue
 Copy-Item -Path "C:\hayabusa\sec_summary.html" -Destination $resultsDir -ErrorAction SilentlyContinue
 
 
