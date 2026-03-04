@@ -3,8 +3,6 @@ Write-Host "=== DFIR Automation Script Started ==="
 # -----------------------------
 # 1️⃣ DOWNLOAD TOOLS
 # -----------------------------
-
-
 Write-Host "[+] Downloading Hoarder repository"
 $git = Get-Command git -ErrorAction SilentlyContinue
 if (-not $git) {
@@ -20,55 +18,39 @@ if (-not $git) {
 }
 
 # -----------------------------
-# 3️⃣ CLONE HOARDER REPO
+# 2️⃣ CLONE HOARDER REPO
 # -----------------------------
 Write-Host "[+] Cloning Hoarder repository"
-# Shallow clone to save time
 git clone --depth 1 https://github.com/DFIRKuiper/Hoarder.git C:\hoarder_temp
 $hoarderDir = "C:\hoarder_temp\releases"
-
-
-
-# -----------------------------
-# 2️⃣ EXTRACT & RENAME
-# -----------------------------
-
-
 
 # -----------------------------
 # 3️⃣ RUN TOOLS
 # -----------------------------
-
-
 Write-Host "[+] Running Hoarder (-vv)"
 Set-Location $hoarderDir
 .\hoarder.exe -vv
 
-
-
-
-
-# -----------------------------
-# -----------------------------
 # -----------------------------
 # ✅ Collect and zip results
 # -----------------------------
 Write-Host "[+] Preparing results folder"
-
 $resultsDir = "C:\results"
-# Remove old results if they exist
 Remove-Item -Path $resultsDir -Recurse -Force -ErrorAction SilentlyContinue
-# Create a fresh folder
 New-Item -ItemType Directory -Path $resultsDir | Out-Null
 
 # -----------------------------
-# Collect outputs from tools
+# Collect only the ZIP output from Hoarder
 # -----------------------------
-Write-Host "[+] Collecting Hoarder results"
-$hoarderSource = "C:\hoarder_temp\releases\*"
-$hoarderDest   = Join-Path $resultsDir "hoarder"
-New-Item -ItemType Directory -Path $hoarderDest -Force | Out-Null
-Copy-Item -Path $hoarderSource -Destination $hoarderDest -Recurse -ErrorAction SilentlyContinue
+Write-Host "[+] Collecting Hoarder ZIP output"
+$hoarderZip = Get-ChildItem -Path $hoarderDir -Filter "*.zip" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+if ($hoarderZip) {
+    Copy-Item -Path $hoarderZip.FullName -Destination $resultsDir
+    Write-Host "[+] Found and copied: $($hoarderZip.Name)"
+} else {
+    Write-Host "[!] WARNING: No ZIP file found in $hoarderDir"
+}
 
 # -----------------------------
 # Create final ZIP for SFTP
@@ -78,5 +60,3 @@ if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
 Compress-Archive -Path "$resultsDir\*" -DestinationPath $zipPath -Force
 
 Write-Host "[+] DONE  Results ready at $zipPath"
-
-
