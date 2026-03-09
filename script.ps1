@@ -17,50 +17,75 @@ if (-not $git) {
     $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" +
                 [System.Environment]::GetEnvironmentVariable("PATH", "User")
 } else {
-    Write-Host "[+] Git is already installed."
+    Write-Host "[~] Git is already installed."
 }
 
 # -----------------------------
-# 2️⃣ DOWNLOAD TOOLS
+# 2️⃣ DOWNLOAD & EXTRACT LOKI
 # -----------------------------
-Write-Host "[+] Downloading LOKI..."
-Invoke-WebRequest `
-    -Uri "https://github.com/Neo23x0/Loki/releases/latest/download/loki_0.51.0.zip" `
-    -OutFile "C:\loki_0.51.0.zip"
+$lokiZip = "C:\loki_0.51.0.zip"
+$lokiExe = "C:\loki\loki\loki.exe"
 
-Write-Host "[+] Downloading Hayabusa..."
-Invoke-WebRequest `
-    -Uri "https://github.com/Yamato-Security/hayabusa/releases/download/v3.8.0/hayabusa-3.8.0-win-x86.zip" `
-    -OutFile "C:\hayabusa-3.8.0-win-x86.zip"
+if (Test-Path $lokiExe) {
+    Write-Host "[~] LOKI already extracted, skipping download and extraction"
+} else {
+    if (Test-Path $lokiZip) {
+        Write-Host "[~] LOKI ZIP already downloaded, skipping download"
+    } else {
+        Write-Host "[+] Downloading LOKI..."
+        Invoke-WebRequest `
+            -Uri "https://github.com/Neo23x0/Loki/releases/latest/download/loki_0.51.0.zip" `
+            -OutFile $lokiZip
+    }
+    Write-Host "[+] Extracting LOKI..."
+    Expand-Archive $lokiZip "C:\loki" -Force
+}
 
 # -----------------------------
-# 3️⃣ CLONE HOARDER REPO
+# 3️⃣ DOWNLOAD & EXTRACT HAYABUSA
+# -----------------------------
+$hayabusaZip = "C:\hayabusa-3.8.0-win-x86.zip"
+$hayabusaExe = "C:\hayabusa\hayabusa-3.8.0-win-x86.exe"
+
+if (Test-Path $hayabusaExe) {
+    Write-Host "[~] Hayabusa already extracted, skipping download and extraction"
+} else {
+    if (Test-Path $hayabusaZip) {
+        Write-Host "[~] Hayabusa ZIP already downloaded, skipping download"
+    } else {
+        Write-Host "[+] Downloading Hayabusa..."
+        Invoke-WebRequest `
+            -Uri "https://github.com/Yamato-Security/hayabusa/releases/download/v3.8.0/hayabusa-3.8.0-win-x86.zip" `
+            -OutFile $hayabusaZip
+    }
+    Write-Host "[+] Extracting Hayabusa..."
+    Expand-Archive $hayabusaZip "C:\hayabusa" -Force
+}
+
+# -----------------------------
+# 4️⃣ CLONE HOARDER REPO
 # -----------------------------
 $hoarderTemp = "C:\hoarder_temp"
 $hoarderDir  = "$hoarderTemp\releases"
+$hoarderExe  = "$hoarderDir\hoarder.exe"
 
-if (Test-Path $hoarderTemp) {
-    Write-Host "[+] Removing old hoarder_temp..."
-    Remove-Item -Path $hoarderTemp -Recurse -Force
+if (Test-Path $hoarderExe) {
+    Write-Host "[~] Hoarder already cloned, skipping clone"
+} else {
+    if (Test-Path $hoarderTemp) {
+        Write-Host "[+] Removing old hoarder_temp..."
+        Remove-Item -Path $hoarderTemp -Recurse -Force
+    }
+
+    Write-Host "[+] Cloning Hoarder repository..."
+    git clone --depth 1 https://github.com/DFIRKuiper/Hoarder.git $hoarderTemp
+
+    if (-not (Test-Path $hoarderDir)) {
+        Write-Host "[!] ERROR: Expected releases folder not found at $hoarderDir"
+        Get-ChildItem $hoarderTemp | ForEach-Object { Write-Host "    $_" }
+        exit 1
+    }
 }
-
-Write-Host "[+] Cloning Hoarder repository..."
-git clone --depth 1 https://github.com/DFIRKuiper/Hoarder.git $hoarderTemp
-
-if (-not (Test-Path $hoarderDir)) {
-    Write-Host "[!] ERROR: Expected releases folder not found at $hoarderDir"
-    Get-ChildItem $hoarderTemp | ForEach-Object { Write-Host "    $_" }
-    exit 1
-}
-
-# -----------------------------
-# 4️⃣ EXTRACT TOOLS
-# -----------------------------
-Write-Host "[+] Extracting LOKI..."
-Expand-Archive "C:\loki_0.51.0.zip" "C:\loki" -Force
-
-Write-Host "[+] Extracting Hayabusa..."
-Expand-Archive "C:\hayabusa-3.8.0-win-x86.zip" "C:\hayabusa" -Force
 
 # -----------------------------
 # 5️⃣ PREPARE RESULTS FOLDER
@@ -80,7 +105,6 @@ Write-Host "[+] Running LOKI..."
 Set-Location "C:\loki\loki"
 .\loki.exe
 
-# Loki writes .log files into its own folder — grab only those
 Write-Host "[+] Collecting LOKI logs..."
 $lokiLogs = Get-ChildItem -Path "C:\loki\loki" -Filter "*.log"
 if ($lokiLogs) {
@@ -98,13 +122,11 @@ if ($lokiLogs) {
 Write-Host "[+] Running Hoarder (-vv)..."
 Set-Location $hoarderDir
 
-# Snapshot ZIPs before running so we only grab the new one
 $zipsBefore = Get-ChildItem -Path $hoarderDir -Filter "*.zip" |
               Select-Object -ExpandProperty FullName
 
 .\hoarder.exe -vv
 
-# Grab only the ZIP Hoarder just created
 Write-Host "[+] Collecting Hoarder ZIP..."
 $newZip = Get-ChildItem -Path $hoarderDir -Filter "*.zip" |
           Where-Object { $zipsBefore -notcontains $_.FullName } |
@@ -124,11 +146,10 @@ if ($newZip) {
 # 8️⃣ RUN HAYABUSA
 # -----------------------------
 Write-Host "[+] Running Hayabusa..."
-$hayabusaExe = "C:\hayabusa\hayabusa-3.8.0-win-x86.exe"
-$logsPath    = "C:\Windows\System32\winevt\Logs"
-$rulesPath   = "C:\hayabusa\rules"
-$outputJson  = "C:\hayabusa\sec.json"
-$outputHTML  = "C:\hayabusa\sec_summary.html"
+$logsPath   = "C:\Windows\System32\winevt\Logs"
+$rulesPath  = "C:\hayabusa\rules"
+$outputJson = "C:\hayabusa\sec.json"
+$outputHTML = "C:\hayabusa\sec_summary.html"
 
 & $hayabusaExe `
     json-timeline `
@@ -141,7 +162,6 @@ $outputHTML  = "C:\hayabusa\sec_summary.html"
     -T `
     --HTML-report $outputHTML
 
-# Grab only the two output files, not the entire hayabusa folder
 Write-Host "[+] Collecting Hayabusa results..."
 foreach ($file in @($outputJson, $outputHTML)) {
     if (Test-Path $file) {

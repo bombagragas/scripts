@@ -3,17 +3,29 @@ Write-Host "=== DFIR Automation Script Started ==="
 # -----------------------------
 # 1️⃣ DOWNLOAD TOOLS
 # -----------------------------
-Write-Host "[+] Downloading LOKI"
-Invoke-WebRequest `
- -Uri "https://github.com/Neo23x0/Loki/releases/latest/download/loki_0.51.0.zip" `
- -OutFile "C:\loki_0.51.0.zip"
 
+$lokiZip     = "C:\loki_0.51.0.zip"
+$extractPath = "C:\loki"
+$lokiExe     = "C:\loki\loki\loki.exe"
 
-# -----------------------------
-# 2️⃣ EXTRACT & RENAME
-# -----------------------------
-Write-Host "[+] Extracting LOKI"
-Expand-Archive "C:\loki_0.51.0.zip" "C:\loki" -Force
+if (Test-Path $lokiExe) {
+    Write-Host "[~] LOKI already extracted, skipping download and extraction"
+} else {
+    if (Test-Path $lokiZip) {
+        Write-Host "[~] LOKI ZIP already downloaded, skipping download"
+    } else {
+        Write-Host "[+] Downloading LOKI"
+        Invoke-WebRequest `
+            -Uri "https://github.com/Neo23x0/Loki/releases/latest/download/loki_0.51.0.zip" `
+            -OutFile $lokiZip
+    }
+
+    # -----------------------------
+    # 2️⃣ EXTRACT & RENAME
+    # -----------------------------
+    Write-Host "[+] Extracting LOKI"
+    Expand-Archive $lokiZip $extractPath -Force
+}
 
 
 # -----------------------------
@@ -25,31 +37,25 @@ Set-Location "C:\loki\loki"
 
 
 # -----------------------------
-# -----------------------------
 # ✅ Collect and zip results
 # -----------------------------
 Write-Host "[+] Preparing results folder"
 
 $resultsDir = "C:\results"
-# Remove old results if they exist
 Remove-Item -Path $resultsDir -Recurse -Force -ErrorAction SilentlyContinue
-# Create a fresh folder
 New-Item -ItemType Directory -Path $resultsDir | Out-Null
 
 # -----------------------------
 # Collect outputs from tools
 # -----------------------------
 Write-Host "[+] Collecting LOKI logs"
-$lokiLogs = "C:\loki\loki\*.log"
-Copy-Item -Path $lokiLogs -Destination $resultsDir -ErrorAction SilentlyContinue
+Copy-Item -Path "C:\loki\loki\*.log" -Destination $resultsDir -ErrorAction SilentlyContinue
 
 # -----------------------------
 # Create final ZIP for SFTP
 # -----------------------------
-$zipPath = "C:\results.zip"
-if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
-Compress-Archive -Path "$resultsDir\*" -DestinationPath $zipPath -Force
+$finalZip = "C:\results.zip"
+if (Test-Path $finalZip) { Remove-Item -Path $finalZip -Force }
+Compress-Archive -Path "$resultsDir\*" -DestinationPath $finalZip -Force
 
-Write-Host "[+] DONE  Results ready at $zipPath"
-
-
+Write-Host "[+] DONE  Results ready at $finalZip"
