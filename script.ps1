@@ -181,9 +181,9 @@ if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
 $resultItems = Get-ChildItem -Path $resultsDir
 if ($resultItems) {
     Compress-Archive -Path "$resultsDir\*" -DestinationPath $zipPath -Force
-    Write-Host "[+] DONE — Results ready at $zipPath"
+    Write-Host "[+] DONE - Results ready at $zipPath"
     Write-Host "[i] Final contents:"
     $resultItems | ForEach-Object { Write-Host "    $($_.Name)" }
 } else {
-    Write-Host "[!] Results folder is empty — skipping ZIP creation."
+    Write-Host "[!] WARNING: Results folder is empty - skipping ZIP creation."
 }
