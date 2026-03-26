@@ -49,6 +49,7 @@ $outputHTML  = "C:\hayabusa\sec_summary.html"
   --rules $rulesPath `
   --output $outputJSON `
   -T `
+  --clobber `
   --HTML-report $outputHTML
 
 
