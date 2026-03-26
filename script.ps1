@@ -160,6 +160,7 @@ $outputHTML = "C:\hayabusa\sec_summary.html"
     --rules $rulesPath `
     --output $outputJson `
     -T `
+    --clobber `
     --HTML-report $outputHTML
 
 Write-Host "[+] Collecting Hayabusa results..."
