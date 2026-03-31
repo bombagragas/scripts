@@ -119,8 +119,6 @@ Set-Location "C:\loki\loki"
     -p "C:\ProgramData" `
     -p "C:\Windows\Temp" `
     -p "C:\Temp" `
-    --csv `
-    --dontwait
 
 Write-Host "[+] Collecting LOKI logs..."
 if (Test-Path $lokiLog) {
