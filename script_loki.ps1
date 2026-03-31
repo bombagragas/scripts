@@ -7,6 +7,7 @@ Write-Host "=== DFIR Automation Script Started ==="
 $lokiZip     = "C:\loki_0.51.0.zip"
 $extractPath = "C:\loki"
 $lokiExe     = "C:\loki\loki\loki.exe"
+$lokiLog     = "C:\loki\loki\loki_scan.log"
 
 if (Test-Path $lokiExe) {
     Write-Host "[~] LOKI already extracted, skipping download and extraction"
@@ -31,9 +32,25 @@ if (Test-Path $lokiExe) {
 # -----------------------------
 # 3️⃣ RUN TOOLS
 # -----------------------------
+
+# Clear previous log so it always overwrites
+if (Test-Path $lokiLog) {
+    Clear-Content -Path $lokiLog
+    Write-Host "[~] Cleared previous LOKI log"
+}
+
 Write-Host "[+] Running LOKI"
 Set-Location "C:\loki\loki"
-.\loki
+.\loki.exe `
+    --logfile $lokiLog `
+    --noproc `
+    --nofilesystem `
+    -p "C:\Users" `
+    -p "C:\ProgramData" `
+    -p "C:\Windows\Temp" `
+    -p "C:\Temp" `
+    --csv `
+    --dontwait
 
 
 # -----------------------------
@@ -49,7 +66,7 @@ New-Item -ItemType Directory -Path $resultsDir | Out-Null
 # Collect outputs from tools
 # -----------------------------
 Write-Host "[+] Collecting LOKI logs"
-Copy-Item -Path "C:\loki\loki\*.log" -Destination $resultsDir -ErrorAction SilentlyContinue
+Copy-Item -Path $lokiLog -Destination $resultsDir -ErrorAction SilentlyContinue
 
 # -----------------------------
 # Create final ZIP for SFTP

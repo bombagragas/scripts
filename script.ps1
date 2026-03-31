@@ -25,6 +25,7 @@ if (-not $git) {
 # -----------------------------
 $lokiZip = "C:\loki_0.51.0.zip"
 $lokiExe = "C:\loki\loki\loki.exe"
+$lokiLog = "C:\loki\loki\loki_scan.log"
 
 if (Test-Path $lokiExe) {
     Write-Host "[~] LOKI already extracted, skipping download and extraction"
@@ -101,19 +102,32 @@ New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
 # -----------------------------
 # 6️⃣ RUN LOKI
 # -----------------------------
+
+# Clear previous log so it always overwrites
+if (Test-Path $lokiLog) {
+    Clear-Content -Path $lokiLog
+    Write-Host "[~] Cleared previous LOKI log"
+}
+
 Write-Host "[+] Running LOKI..."
 Set-Location "C:\loki\loki"
-.\loki.exe
+.\loki.exe `
+    --logfile $lokiLog `
+    --noproc `
+    --nofilesystem `
+    -p "C:\Users" `
+    -p "C:\ProgramData" `
+    -p "C:\Windows\Temp" `
+    -p "C:\Temp" `
+    --csv `
+    --dontwait
 
 Write-Host "[+] Collecting LOKI logs..."
-$lokiLogs = Get-ChildItem -Path "C:\loki\loki" -Filter "*.log"
-if ($lokiLogs) {
-    foreach ($log in $lokiLogs) {
-        Copy-Item -Path $log.FullName -Destination $resultsDir -Force
-        Write-Host "[+] Copied: $($log.Name)"
-    }
+if (Test-Path $lokiLog) {
+    Copy-Item -Path $lokiLog -Destination $resultsDir -Force
+    Write-Host "[+] Copied: loki_scan.log"
 } else {
-    Write-Host "[!] WARNING: No LOKI log files found."
+    Write-Host "[!] WARNING: No LOKI log file found."
 }
 
 # -----------------------------
@@ -122,24 +136,39 @@ if ($lokiLogs) {
 Write-Host "[+] Running Hoarder (-vv)..."
 Set-Location $hoarderDir
 
+# ✅ Snapshot ZIPs before run
 $zipsBefore = Get-ChildItem -Path $hoarderDir -Filter "*.zip" |
               Select-Object -ExpandProperty FullName
 
 .\hoarder.exe -vv
 
-Write-Host "[+] Collecting Hoarder ZIP..."
-$newZip = Get-ChildItem -Path $hoarderDir -Filter "*.zip" |
-          Where-Object { $zipsBefore -notcontains $_.FullName } |
-          Sort-Object LastWriteTime -Descending |
-          Select-Object -First 1
+# ✅ Wait a moment to ensure file is flushed to disk
+Start-Sleep -Seconds 3
 
-if ($newZip) {
-    Copy-Item -Path $newZip.FullName -Destination $resultsDir -Force
-    Write-Host "[+] Copied ZIP: $($newZip.Name)"
+Write-Host "[+] Collecting Hoarder ZIP..."
+$newZips = Get-ChildItem -Path $hoarderDir -Filter "*.zip" |
+           Where-Object { $zipsBefore -notcontains $_.FullName } |
+           Sort-Object LastWriteTime -Descending
+
+if ($newZips) {
+    foreach ($zip in $newZips) {
+        Copy-Item -Path $zip.FullName -Destination $resultsDir -Force
+        Write-Host "[+] Copied ZIP: $($zip.Name)"
+    }
 } else {
-    Write-Host "[!] WARNING: No new ZIP found in $hoarderDir"
-    Write-Host "[i] Contents of releases folder:"
-    Get-ChildItem $hoarderDir | ForEach-Object { Write-Host "    $($_.FullName)" }
+    # ✅ Fallback: grab the most recently modified ZIP regardless
+    Write-Host "[!] WARNING: No new ZIP detected, falling back to latest ZIP in $hoarderDir"
+    $fallbackZip = Get-ChildItem -Path $hoarderDir -Filter "*.zip" |
+                   Sort-Object LastWriteTime -Descending |
+                   Select-Object -First 1
+    if ($fallbackZip) {
+        Copy-Item -Path $fallbackZip.FullName -Destination $resultsDir -Force
+        Write-Host "[+] Copied fallback ZIP: $($fallbackZip.Name)"
+    } else {
+        Write-Host "[!] WARNING: No ZIP found at all in $hoarderDir"
+        Write-Host "[i] Contents of releases folder:"
+        Get-ChildItem $hoarderDir | ForEach-Object { Write-Host "    $($_.FullName)" }
+    }
 }
 
 # -----------------------------
