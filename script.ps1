@@ -112,13 +112,12 @@ if (Test-Path $lokiLog) {
 Write-Host "[+] Running LOKI..."
 Set-Location "C:\loki\loki"
 .\loki.exe `
-    --logfile $lokiLog `
-    --noproc `
-    --nofilesystem `
+    -l $lokiLog `
+    --noprocscan `
     -p "C:\Users" `
     -p "C:\ProgramData" `
     -p "C:\Windows\Temp" `
-    -p "C:\Temp" `
+    -p "C:\Temp"
 
 Write-Host "[+] Collecting LOKI logs..."
 if (Test-Path $lokiLog) {
