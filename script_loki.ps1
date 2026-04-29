@@ -42,9 +42,8 @@ if (Test-Path $lokiLog) {
 Write-Host "[+] Running LOKI"
 Set-Location "C:\loki\loki"
 .\loki.exe `
-    --logfile $lokiLog `
+    --l $lokiLog `
     --noproc `
-    --nofilesystem `
     -p "C:\Users" `
     -p "C:\ProgramData" `
     -p "C:\Windows\Temp" `
