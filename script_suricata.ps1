@@ -523,32 +523,13 @@ Register-Task `
 Write-Step "Tasks registered"
 
 # ── Step 8: Start both tasks ──────────────────────────────────
-Start-ScheduledTask $captureTaskName
+schtasks /run /tn $captureTaskName | Out-Null
 Write-Step "Capture started (dumpcap -> $pcapDir)"
-
-# Also start directly in case scheduled task needs reboot to initialize
-# Start capture loop detached - survives SSH disconnect
-$captureJob = Start-Job -ScriptBlock {
-    Start-Process -FilePath "powershell.exe" `
-        -ArgumentList "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$using:captureScript`"" `
-        -WindowStyle Hidden
-}
-Wait-Job $captureJob | Out-Null
-Remove-Job $captureJob
 
 Start-Sleep -Seconds 5
 
-Start-ScheduledTask $suricataTaskName
+schtasks /run /tn $suricataTaskName | Out-Null
 Write-Step "Suricata started"
-
-# Start Suricata detached - survives SSH disconnect
-$suricataJob = Start-Job -ScriptBlock {
-    Start-Process -FilePath $using:suricataExe `
-        -ArgumentList "-c `"$using:yamlConf`" -r `"$using:pcapDir`" --pcap-file-continuous --pcap-file-delete -l `"$using:logDir`"" `
-        -WindowStyle Hidden
-}
-Wait-Job $suricataJob | Out-Null
-Remove-Job $suricataJob
 
 Start-Sleep -Seconds 15
 
