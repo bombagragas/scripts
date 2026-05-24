@@ -527,19 +527,28 @@ Start-ScheduledTask $captureTaskName
 Write-Step "Capture started (dumpcap -> $pcapDir)"
 
 # Also start directly in case scheduled task needs reboot to initialize
-Start-Process -FilePath "powershell.exe" `
-    -ArgumentList "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$captureScript`"" `
-    -WindowStyle Hidden
+# Start capture loop detached - survives SSH disconnect
+$captureJob = Start-Job -ScriptBlock {
+    Start-Process -FilePath "powershell.exe" `
+        -ArgumentList "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$using:captureScript`"" `
+        -WindowStyle Hidden
+}
+Wait-Job $captureJob | Out-Null
+Remove-Job $captureJob
 
 Start-Sleep -Seconds 5
 
 Start-ScheduledTask $suricataTaskName
 Write-Step "Suricata started"
 
-# Also start directly in case scheduled task needs reboot to initialize
-Start-Process -FilePath $suricataExe `
-    -ArgumentList "-c `"$yamlConf`" -r `"$pcapDir`" --pcap-file-continuous --pcap-file-delete -l `"$logDir`"" `
-    -WindowStyle Hidden
+# Start Suricata detached - survives SSH disconnect
+$suricataJob = Start-Job -ScriptBlock {
+    Start-Process -FilePath $using:suricataExe `
+        -ArgumentList "-c `"$using:yamlConf`" -r `"$using:pcapDir`" --pcap-file-continuous --pcap-file-delete -l `"$using:logDir`"" `
+        -WindowStyle Hidden
+}
+Wait-Job $suricataJob | Out-Null
+Remove-Job $suricataJob
 
 Start-Sleep -Seconds 15
 
