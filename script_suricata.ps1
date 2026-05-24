@@ -523,12 +523,15 @@ Register-Task `
 Write-Step "Tasks registered"
 
 # ── Step 8: Start both tasks ──────────────────────────────────
-schtasks /run /tn $captureTaskName | Out-Null
+
+# Register tasks for reboot persistence (already done above)
+# Start processes immediately using cmd start - fully detached from SSH session
+cmd /c "start /b powershell.exe -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$captureScript`""
 Write-Step "Capture started (dumpcap -> $pcapDir)"
 
 Start-Sleep -Seconds 5
 
-schtasks /run /tn $suricataTaskName | Out-Null
+cmd /c "start /b `"$suricataExe`" -c `"$yamlConf`" -r `"$pcapDir`" --pcap-file-continuous --pcap-file-delete -l `"$logDir`""
 Write-Step "Suricata started"
 
 Start-Sleep -Seconds 15
