@@ -72,6 +72,7 @@ function Register-Task {
 function Stop-AllTasks {
     Stop-ScheduledTask $captureTaskName  -ErrorAction SilentlyContinue
     Stop-ScheduledTask $suricataTaskName -ErrorAction SilentlyContinue
+    Stop-ScheduledTask $watcherTaskName -ErrorAction SilentlyContinue
     Stop-Process -Name suricata  -Force -ErrorAction SilentlyContinue
     Stop-Process -Name dumpcap   -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 3
@@ -368,6 +369,44 @@ suppress gen_id 1, sig_id 2210027
 "@ | Set-Content -Path "$rulesDir\threshold.conf" -Encoding ASCII
 }
 
+$ngrokUrl    = "https://shuffle-chair-driver.ngrok-free.app/machines/alert/"
+$watcherTaskName = "DFIR-AlertWatcher"
+
+function Write-AlertWatcher {
+    @"
+`$logFile    = '$logDir\fast.log'
+`$ngrokUrl   = '$ngrokUrl'
+`$lastSize   = 0
+`$machineName = `$env:COMPUTERNAME
+
+while (`$true) {
+    if (Test-Path `$logFile) {
+        `$currentSize = (Get-Item `$logFile).Length
+        if (`$currentSize -gt `$lastSize) {
+            `$newLines = Get-Content `$logFile | Select-Object -Last 10
+            foreach (`$line in `$newLines) {
+                if (`$line -match '\[\*\*\] (.+) \[\*\*\]') {
+                    `$signature = `$Matches[1]
+                    `$severity  = if (`$line -match 'Priority: 1') { 1 } elseif (`$line -match 'Priority: 2') { 2 } else { 3 }
+                    `$body = @{
+                        machine  = `$machineName
+                        alert    = `$signature
+                        severity = `$severity
+                        raw      = `$line
+                    } | ConvertTo-Json
+                    try {
+                        Invoke-RestMethod -Uri `$ngrokUrl -Method Post -Body `$body -ContentType 'application/json' -TimeoutSec 5
+                    } catch {}
+                }
+            }
+            `$lastSize = `$currentSize
+        }
+    }
+    Start-Sleep -Seconds 10
+}
+"@ | Set-Content -Path "$suricataDir\alert_watcher.ps1" -Encoding ASCII
+}
+
 function Get-RuleFilesYaml {
     # Exclude rules that require keywords not supported in offline pcap mode
     $excluded = @("emerging-hunting.rules", "modbus-events.rules")
@@ -500,6 +539,8 @@ $homeNet = "$ip/24"
 
 Write-SuricataYaml -homeNet $homeNet -ruleFilesYaml (Get-RuleFilesYaml)
 Write-ThresholdConf
+Write-AlertWatcher
+Write-Step "Alert watcher script written"
 Write-CaptureScript -guid $wifiGuid
 Write-Step "Config files written (HOME_NET: $homeNet)"
 
@@ -520,7 +561,14 @@ Register-Task `
     -taskArgs "-c `"$yamlConf`" -r `"$pcapDir`" --pcap-file-continuous --pcap-file-delete -l `"$logDir`"" `
     -description "Suricata NIDS - DFIR"
 
+Register-Task `
+    -name $watcherTaskName `
+    -exe "powershell.exe" `
+    -taskArgs "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$suricataDir\alert_watcher.ps1`"" `
+    -description "Suricata Alert Watcher - DFIR"
+
 Write-Step "Tasks registered"
+
 
 # ── Step 8: Start both tasks ──────────────────────────────────
 Start-ScheduledTask $captureTaskName
@@ -540,6 +588,8 @@ Start-Sleep -Seconds 5
 
 Start-ScheduledTask $suricataTaskName
 Write-Step "Suricata started"
+Start-ScheduledTask $watcherTaskName
+Write-Step "Alert watcher started"
 
 # Start Suricata detached - survives SSH disconnect
 $suricataJob = Start-Job -ScriptBlock {
