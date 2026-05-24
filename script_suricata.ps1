@@ -525,10 +525,22 @@ Write-Step "Tasks registered"
 # ── Step 8: Start both tasks ──────────────────────────────────
 Start-ScheduledTask $captureTaskName
 Write-Step "Capture started (dumpcap -> $pcapDir)"
+
+# Also start directly in case scheduled task needs reboot to initialize
+Start-Process -FilePath "powershell.exe" `
+    -ArgumentList "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$captureScript`"" `
+    -WindowStyle Hidden
+
 Start-Sleep -Seconds 5
 
 Start-ScheduledTask $suricataTaskName
 Write-Step "Suricata started"
+
+# Also start directly in case scheduled task needs reboot to initialize
+Start-Process -FilePath $suricataExe `
+    -ArgumentList "-c `"$yamlConf`" -r `"$pcapDir`" --pcap-file-continuous --pcap-file-delete -l `"$logDir`"" `
+    -WindowStyle Hidden
+
 Start-Sleep -Seconds 15
 
 # ── Step 9: Verify ────────────────────────────────────────────
