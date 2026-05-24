@@ -438,10 +438,21 @@ if (-not (Test-Path $dumpcapExe)) {
     if (-not (Test-Path $dumpcapExe)) {
         Write-Info "winget failed or unavailable -- downloading Wireshark 4.4.6 directly"
         $wsInstaller = "$tmpDir\wireshark_setup.exe"
-        Invoke-WebRequest `
-            -Uri "https://2.na.dl.wireshark.org/win64/Wireshark-4.4.6-x64.exe" `
-            -OutFile $wsInstaller -UseBasicParsing
-        # /S = truly silent install, includes npcap driver
+        $wsUrls = @(
+            "https://www.wireshark.org/download/win64/all-versions/Wireshark-4.4.6-x64.exe",
+            "https://2.na.dl.wireshark.org/win64/Wireshark-4.4.6-x64.exe",
+            "https://1.eu.dl.wireshark.org/win64/Wireshark-4.4.6-x64.exe"
+        )
+        $downloaded = $false
+        foreach ($url in $wsUrls) {
+            try {
+                Write-Info "Trying $url"
+                Invoke-WebRequest -Uri $url -OutFile $wsInstaller -UseBasicParsing
+                $downloaded = $true
+                break
+            } catch { Write-Info "Failed, trying next mirror..." }
+        }
+        if (-not $downloaded) { throw "All Wireshark mirrors failed" }
         Start-Process $wsInstaller -ArgumentList "/S" -Wait -Verb RunAs
         Remove-Item $wsInstaller -Force -ErrorAction SilentlyContinue
     }
