@@ -369,7 +369,7 @@ suppress gen_id 1, sig_id 2210027
 "@ | Set-Content -Path "$rulesDir\threshold.conf" -Encoding ASCII
 }
 
-$ngrokUrl    = "https://shuffle-chair-driver.ngrok-free.app/machines/alert/"
+$ngrokUrl = "https://shuffle-chair-driver.ngrok-free.dev/machines/alert/"
 $watcherTaskName = "DFIR-AlertWatcher"
 
 function Write-AlertWatcher {
